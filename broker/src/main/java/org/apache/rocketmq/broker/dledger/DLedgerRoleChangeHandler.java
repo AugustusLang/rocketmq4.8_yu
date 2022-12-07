@@ -46,7 +46,8 @@ public class DLedgerRoleChangeHandler implements DLedgerLeaderElector.RoleChange
         this.dLegerServer = dLedgerCommitLog.getdLedgerServer();
     }
 
-    @Override public void handle(long term, MemberState.Role role) {
+    @Override 
+    public void handle(long term, MemberState.Role role) {
         Runnable runnable = new Runnable() {
             @Override public void run() {
                 long start = System.currentTimeMillis();

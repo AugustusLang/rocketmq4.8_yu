@@ -167,6 +167,7 @@ import org.apache.rocketmq.remoting.protocol.RemotingSerializable;
 public class MQClientAPIImpl {
 
     private final static InternalLogger log = ClientLogger.getLog();
+    // 创建请求，如果将sendSmartMsg设为true，可以将请求keey压缩，加快序列化
     private static boolean sendSmartMsg =
         Boolean.parseBoolean(System.getProperty("org.apache.rocketmq.client.sendSmartMsg", "true"));
 
@@ -431,6 +432,32 @@ public class MQClientAPIImpl {
         return sendMessage(addr, brokerName, msg, requestHeader, timeoutMillis, communicationMode, null, null, null, 0, context, producer);
     }
 
+    /**
+     * 构建消息发送的请求对象sendMessageRequestHeader
+		使用RemotingCommand创建请求指令并设置参数
+		发起远程调用请求，实现消息发送
+		
+		
+		消息发送模式为ONEWAY时，消息只会单向发送一次
+		消息发送模式为ASYNC时，如果消息发送失败，会根据重试次数重发消息
+		消息发送模式为SYNC时，直接发送消息，不重试
+     * @param addr Broker地址
+     * @param brokerName
+     * @param msg
+     * @param requestHeader
+     * @param timeoutMillis
+     * @param communicationMode 通信模式
+     * @param sendCallback 发送回调
+     * @param topicPublishInfo
+     * @param instance	Client实例
+     * @param retryTimesWhenSendFailed 最大重试次数
+     * @param context
+     * @param producer
+     * @return
+     * @throws RemotingException
+     * @throws MQBrokerException
+     * @throws InterruptedException
+     */
     public SendResult sendMessage(
         final String addr,
         final String brokerName,
@@ -468,6 +495,7 @@ public class MQClientAPIImpl {
 
         switch (communicationMode) {
             case ONEWAY:
+            	   // 基于Netty快速通信框架，发送消息给broker
                 this.remotingClient.invokeOneway(addr, request, timeoutMillis);
                 return null;
             case ASYNC:
@@ -505,6 +533,23 @@ public class MQClientAPIImpl {
         return this.processSendResponse(brokerName, msg, response,addr);
     }
 
+    /**
+     * 异步发送消息
+     * @param addr
+     * @param brokerName
+     * @param msg
+     * @param timeoutMillis
+     * @param request
+     * @param sendCallback
+     * @param topicPublishInfo
+     * @param instance
+     * @param retryTimesWhenSendFailed
+     * @param times
+     * @param context
+     * @param producer
+     * @throws InterruptedException
+     * @throws RemotingException
+     */
     private void sendMessageAsync(
         final String addr,
         final String brokerName,
@@ -1359,7 +1404,7 @@ public class MQClientAPIImpl {
         boolean allowTopicNotExist) throws MQClientException, InterruptedException, RemotingTimeoutException, RemotingSendRequestException, RemotingConnectException {
         GetRouteInfoRequestHeader requestHeader = new GetRouteInfoRequestHeader();
         requestHeader.setTopic(topic);
-
+        //TODO 生产和和消费者 从NameServer获取路由信息
         RemotingCommand request = RemotingCommand.createRequestCommand(RequestCode.GET_ROUTEINFO_BY_TOPIC, requestHeader);
 
         RemotingCommand response = this.remotingClient.invokeSync(null, request, timeoutMillis);

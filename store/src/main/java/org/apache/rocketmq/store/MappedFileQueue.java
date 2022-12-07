@@ -38,7 +38,7 @@ public class MappedFileQueue {
     private final String storePath;
 
     private final int mappedFileSize;
-
+    //线程安全的 CopyOnWriteArrayList
     private final CopyOnWriteArrayList<MappedFile> mappedFiles = new CopyOnWriteArrayList<MappedFile>();
 
     private final AllocateMappedFileService allocateMappedFileService;
@@ -146,6 +146,7 @@ public class MappedFileQueue {
 
     public boolean load() {
         File dir = new File(this.storePath);
+        // 获取所有文件列表
         File[] files = dir.listFiles();
         if (files != null) {
             // ascending order
@@ -159,6 +160,7 @@ public class MappedFileQueue {
                 }
 
                 try {
+                	//文件存储IO类 负责文件的读写MappedFile类
                     MappedFile mappedFile = new MappedFile(file.getPath(), mappedFileSize);
 
                     mappedFile.setWrotePosition(this.mappedFileSize);

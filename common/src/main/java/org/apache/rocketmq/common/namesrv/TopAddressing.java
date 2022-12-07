@@ -64,6 +64,12 @@ public class TopAddressing {
         return fetchNSAddr(true, 3000);
     }
 
+    /**
+     *  通过HttpTinClient get获取 NameServer地址
+     * @param verbose
+     * @param timeoutMills
+     * @return
+     */
     public final String fetchNSAddr(boolean verbose, long timeoutMills) {
         String url = this.wsAddr;
         try {

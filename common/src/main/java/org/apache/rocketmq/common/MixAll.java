@@ -141,15 +141,15 @@ public class MixAll {
         string2FileNotSafe(str, tmpFile);
 
         String bakFile = fileName + ".bak";
-        String prevContent = file2String(fileName);
+        String prevContent = file2String(fileName); //fileName中东西转换成String
         if (prevContent != null) {
-            string2FileNotSafe(prevContent, bakFile);
+            string2FileNotSafe(prevContent, bakFile); // 把fileName 的内容写入 .bak文件
         }
 
         File file = new File(fileName);
-        file.delete();
+        file.delete();  //删除 fileName对应的文件
 
-        file = new File(tmpFile);
+        file = new File(tmpFile); //再把fileName.tmp文件重命名为fileName
         file.renameTo(new File(fileName));
     }
 

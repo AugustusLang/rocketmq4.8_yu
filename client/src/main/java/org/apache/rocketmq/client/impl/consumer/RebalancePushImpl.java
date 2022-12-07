@@ -83,8 +83,14 @@ public class RebalancePushImpl extends RebalanceImpl {
 
     @Override
     public boolean removeUnnecessaryMessageQueue(MessageQueue mq, ProcessQueue pq) {
+        /**
+         * Update the Consumer Offset in one way, once the Master is off, updated to Slave, here need to be optimized.
+         * 同步更新offer到broker,优先master,否则slave
+         */
         this.defaultMQPushConsumerImpl.getOffsetStore().persist(mq);
+        //从本地的OffsetStore中删除当前队列消费的Offset  其实就是 从 offsetTable 移除本消息队列 对应的Offset 
         this.defaultMQPushConsumerImpl.getOffsetStore().removeOffset(mq);
+        //如果是有序队列 并且是集群模式 释放mq的锁
         if (this.defaultMQPushConsumerImpl.isConsumeOrderly()
             && MessageModel.CLUSTERING.equals(this.defaultMQPushConsumerImpl.messageModel())) {
             try {
@@ -111,7 +117,7 @@ public class RebalancePushImpl extends RebalanceImpl {
     }
 
     private boolean unlockDelay(final MessageQueue mq, final ProcessQueue pq) {
-
+    	//如果有临时未处理完的数据
         if (pq.hasTempMessage()) {
             log.info("[{}]unlockDelay, begin {} ", mq.hashCode(), mq);
             this.defaultMQPushConsumerImpl.getmQClientFactory().getScheduledExecutorService().schedule(new Runnable() {

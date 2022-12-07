@@ -139,7 +139,9 @@ public class PullAPIWrapper {
             }
         }
     }
-
+ // {@link org.apache.rocketmq.client.impl.consumer.DefaultMQPushConsumerImpl#pullMessage()}
+ // 看到没，这是一只披着羊皮的狼，名字叫PushConsumerImpl，实际干的确是pull的活。
+ // 拉取消息，结果放到pullCallback里
     public PullResult pullKernelImpl(
         final MessageQueue mq,
         final String subExpression,

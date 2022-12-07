@@ -164,6 +164,7 @@ public abstract class RebalanceImpl {
     }
 
     public void lockAll() {
+    	//获取BronkerName下的多有MsgQueue
         HashMap<String, Set<MessageQueue>> brokerMqs = this.buildProcessQueueTableByBrokerName();
 
         Iterator<Entry<String, Set<MessageQueue>>> it = brokerMqs.entrySet().iterator();
@@ -183,10 +184,12 @@ public abstract class RebalanceImpl {
                 requestBody.setMqSet(mqs);
 
                 try {
+                	//根据broker地址获取加锁的MQ集合
                     Set<MessageQueue> lockOKMQSet =
                         this.mQClientFactory.getMQClientAPIImpl().lockBatchMQ(findBrokerResult.getBrokerAddr(), requestBody, 1000);
 
                     for (MessageQueue mq : lockOKMQSet) {
+                    	//当前运行的Msg中包含已经被Locked的则设置为true
                         ProcessQueue processQueue = this.processQueueTable.get(mq);
                         if (processQueue != null) {
                             if (!processQueue.isLocked()) {
@@ -213,6 +216,7 @@ public abstract class RebalanceImpl {
         }
     }
 
+    //再重新分配
     public void doRebalance(final boolean isOrder) {
         Map<String, SubscriptionData> subTable = this.getSubscriptionInner();
         if (subTable != null) {
@@ -234,7 +238,7 @@ public abstract class RebalanceImpl {
     public ConcurrentMap<String, SubscriptionData> getSubscriptionInner() {
         return subscriptionInner;
     }
-
+    //根据话题再分配
     private void rebalanceByTopic(final String topic, final boolean isOrder) {
         switch (messageModel) {
             case BROADCASTING: {
@@ -255,7 +259,9 @@ public abstract class RebalanceImpl {
                 break;
             }
             case CLUSTERING: {
+                //获取当前topic的所有queue队列
                 Set<MessageQueue> mqSet = this.topicSubscribeInfoTable.get(topic);
+                //获取当前topic的所有消费者
                 List<String> cidAll = this.mQClientFactory.findConsumerIdList(topic, consumerGroup);
                 if (null == mqSet) {
                     if (!topic.startsWith(MixAll.RETRY_GROUP_TOPIC_PREFIX)) {
@@ -271,13 +277,14 @@ public abstract class RebalanceImpl {
                     List<MessageQueue> mqAll = new ArrayList<MessageQueue>();
                     mqAll.addAll(mqSet);
 
-                    Collections.sort(mqAll);
+                    Collections.sort(mqAll); //排序 保证所有消费者做负载均衡的顺序一致
                     Collections.sort(cidAll);
-
+                    // 指定负载均衡的策略   随机 平均分配 circle 一致性hash 机房
                     AllocateMessageQueueStrategy strategy = this.allocateMessageQueueStrategy;
 
                     List<MessageQueue> allocateResult = null;
                     try {
+                        //执行负载均衡
                         allocateResult = strategy.allocate(
                             this.consumerGroup,
                             this.mQClientFactory.getClientId(),
@@ -293,7 +300,11 @@ public abstract class RebalanceImpl {
                     if (allocateResult != null) {
                         allocateResultSet.addAll(allocateResult);
                     }
-
+                    /**
+                     * 更新负载均衡后的队列信息
+                     *  对于本来是本消费者消费  负载均衡后由其他消费者消费的队列 做停止消费处理
+                     *  对于本来其他消费者消费 负载均衡后由消费者消费的队列  做开始消费处理
+                     */
                     boolean changed = this.updateProcessQueueTableInRebalance(topic, allocateResultSet, isOrder);
                     if (changed) {
                         log.info(
@@ -324,7 +335,11 @@ public abstract class RebalanceImpl {
             }
         }
     }
-
+    /**
+     * 更新负载均衡后的队列信息
+     *  对于本来是本消费者消费  负载均衡后由其他消费者消费的队列 做停止消费处理
+     *  对于本来其他消费者消费 负载均衡后由消费者消费的队列  做开始消费处理
+     */
     private boolean updateProcessQueueTableInRebalance(final String topic, final Set<MessageQueue> mqSet,
         final boolean isOrder) {
         boolean changed = false;
@@ -336,14 +351,14 @@ public abstract class RebalanceImpl {
             ProcessQueue pq = next.getValue();
 
             if (mq.getTopic().equals(topic)) {
-                if (!mqSet.contains(mq)) {
-                    pq.setDropped(true);
-                    if (this.removeUnnecessaryMessageQueue(mq, pq)) {
+                if (!mqSet.contains(mq)) {  
+                    pq.setDropped(true); // 非本消费者要消费的队列 标记为删除  并在下面执行删除操作
+                    if (this.removeUnnecessaryMessageQueue(mq, pq)) { // 移除本消费者不需要消费的队列
                         it.remove();
                         changed = true;
                         log.info("doRebalance, {}, remove unnecessary mq, {}", consumerGroup, mq);
                     }
-                } else if (pq.isPullExpired()) {
+                } else if (pq.isPullExpired()) { //过期
                     switch (this.consumeType()) {
                         case CONSUME_ACTIVELY:
                             break;
@@ -365,17 +380,18 @@ public abstract class RebalanceImpl {
 
         List<PullRequest> pullRequestList = new ArrayList<PullRequest>();
         for (MessageQueue mq : mqSet) {
+        	//负载均衡后 分到本消费者的队列
             if (!this.processQueueTable.containsKey(mq)) {
                 if (isOrder && !this.lock(mq)) {
                     log.warn("doRebalance, {}, add a new mq failed, {}, because lock failed", consumerGroup, mq);
                     continue;
                 }
 
-                this.removeDirtyOffset(mq);
+                this.removeDirtyOffset(mq); // 删除被污染的offset
                 ProcessQueue pq = new ProcessQueue();
-                long nextOffset = this.computePullFromWhere(mq);
+                long nextOffset = this.computePullFromWhere(mq); //重新计算offset
                 if (nextOffset >= 0) {
-                    ProcessQueue pre = this.processQueueTable.putIfAbsent(mq, pq);
+                    ProcessQueue pre = this.processQueueTable.putIfAbsent(mq, pq); // 放入processQueueTable 重新开始消费
                     if (pre != null) {
                         log.info("doRebalance, {}, mq already exists, {}", consumerGroup, mq);
                     } else {
@@ -393,7 +409,7 @@ public abstract class RebalanceImpl {
                 }
             }
         }
-
+        //立即推送消息
         this.dispatchPullRequest(pullRequestList);
 
         return changed;

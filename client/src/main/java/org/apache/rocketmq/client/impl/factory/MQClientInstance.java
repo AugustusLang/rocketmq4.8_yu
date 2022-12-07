@@ -91,6 +91,7 @@ public class MQClientInstance {
     private final int instanceIndex;
     private final String clientId;
     private final long bootTimestamp = System.currentTimeMillis();
+    //TODO RocketMq客户端的缓存 (生产者信息  消费者信息  路由表  等等)
     private final ConcurrentMap<String/* group */, MQProducerInner> producerTable = new ConcurrentHashMap<String, MQProducerInner>();
     private final ConcurrentMap<String/* group */, MQConsumerInner> consumerTable = new ConcurrentHashMap<String, MQConsumerInner>();
     private final ConcurrentMap<String/* group */, MQAdminExtInner> adminExtTable = new ConcurrentHashMap<String, MQAdminExtInner>();
@@ -224,23 +225,27 @@ public class MQClientInstance {
     public void start() throws MQClientException {
 
         synchronized (this) {
-            switch (this.serviceState) {
-                case CREATE_JUST:
+            switch (this.serviceState) { //判断 service 状态
+                case CREATE_JUST: // 如果是刚启动
                     this.serviceState = ServiceState.START_FAILED;
                     // If not specified,looking address from name server
-                    if (null == this.clientConfig.getNamesrvAddr()) {
+                    if (null == this.clientConfig.getNamesrvAddr()) { // 地址为空 再去拿一次
                         this.mQClientAPIImpl.fetchNameServerAddr();
                     }
                     // Start request-response channel
+                    //开启消息发送服务 NRC NettyRemotingClient
                     this.mQClientAPIImpl.start();
                     // Start various schedule tasks
+                    // 12.1 定时任务
                     this.startScheduledTask();
                     // Start pull service
+                    // 开启消息服务 --> 消费者 线程
                     this.pullMessageService.start();
                     // Start rebalance service
+                    // 负载均衡服务 --> 消费者 线程
                     this.rebalanceService.start();
                     // Start push service
-                    this.defaultMQProducer.getDefaultMQProducerImpl().start(false);
+                    this.defaultMQProducer.getDefaultMQProducerImpl().start(false);  //再一次调用start方法 此时状态已经是 running 会跳出
                     log.info("the client factory [{}] start OK", this.clientId);
                     this.serviceState = ServiceState.RUNNING;
                     break;
@@ -251,9 +256,13 @@ public class MQClientInstance {
             }
         }
     }
-
+    /**
+     * 都是定时任务处理  生产者和消费者不是实时感知Broker的状态会有一定的偏差
+     * 如果服务器出现宕机 生产者和消费之要自行处理故障
+     */
     private void startScheduledTask() {
         if (null == this.clientConfig.getNamesrvAddr()) {
+        	// 2分钟一次的定时任务获取 路由地址
             this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
                 @Override
@@ -266,7 +275,7 @@ public class MQClientInstance {
                 }
             }, 1000 * 10, 1000 * 60 * 2, TimeUnit.MILLISECONDS);
         }
-
+        // 30秒一次修改路由信息
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -278,7 +287,7 @@ public class MQClientInstance {
                 }
             }
         }, 10, this.clientConfig.getPollNameServerInterval(), TimeUnit.MILLISECONDS);
-
+        // 30秒一次心跳
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -291,7 +300,7 @@ public class MQClientInstance {
                 }
             }
         }, 1000, this.clientConfig.getHeartbeatBrokerInterval(), TimeUnit.MILLISECONDS);
-
+        //每5秒一次 定时任务--这里持久化消费进度
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -609,6 +618,7 @@ public class MQClientInstance {
                 try {
                     TopicRouteData topicRouteData;
                     if (isDefault && defaultMQProducer != null) {
+                    	//TODO server 和cconsumer 从NameServer获取路由信息
                         topicRouteData = this.mQClientAPIImpl.getDefaultTopicRouteInfoFromNameServer(defaultMQProducer.getCreateTopicKey(),
                             1000 * 3);
                         if (topicRouteData != null) {

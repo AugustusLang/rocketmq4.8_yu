@@ -36,7 +36,7 @@ public class ClientConfig {
     public static final String SEND_MESSAGE_WITH_VIP_CHANNEL_PROPERTY = "com.rocketmq.sendMessageWithVIPChannel";
     private String namesrvAddr = NameServerAddressUtils.getNameServerAddresses();
     private String clientIP = RemotingUtil.getLocalAddress();
-    private String instanceName = System.getProperty("rocketmq.client.name", "DEFAULT");
+    private String instanceName = System.getProperty("rocketmq.client.name", "DEFAULT"); // 
     private int clientCallbackExecutorThreads = Runtime.getRuntime().availableProcessors();
     protected String namespace;
     protected AccessChannel accessChannel = AccessChannel.LOCAL;
@@ -61,14 +61,14 @@ public class ClientConfig {
     private boolean useTLS = TlsSystemConfig.tlsEnable;
 
     private LanguageCode language = LanguageCode.JAVA;
-
+    //IP@instanceName@unitName
     public String buildMQClientId() {
         StringBuilder sb = new StringBuilder();
-        sb.append(this.getClientIP());
+        sb.append(this.getClientIP()); // IP
 
         sb.append("@");
-        sb.append(this.getInstanceName());
-        if (!UtilAll.isBlank(this.unitName)) {
+        sb.append(this.getInstanceName()); // InstanceName
+        if (!UtilAll.isBlank(this.unitName)) { //unitName
             sb.append("@");
             sb.append(this.unitName);
         }

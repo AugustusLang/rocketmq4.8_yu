@@ -43,10 +43,18 @@ public class MQClientManager {
     public MQClientInstance getOrCreateMQClientInstance(final ClientConfig clientConfig) {
         return getOrCreateMQClientInstance(clientConfig, null);
     }
-
+    /**
+     * 
+     * @param clientConfig  客户端配置
+     * @param rpcHook jvm 钩子
+     * @return
+     */
     public MQClientInstance getOrCreateMQClientInstance(final ClientConfig clientConfig, RPCHook rpcHook) {
+    	//创建客户端ID  生成规则:  IP@instanceName@unitName
         String clientId = clientConfig.buildMQClientId();
+        // 根据客户端ID 获取 客户端实例 (从缓存中获取)
         MQClientInstance instance = this.factoryTable.get(clientId);
+        // 如果为空 则创建一个 放入map中
         if (null == instance) {
             instance =
                 new MQClientInstance(clientConfig.cloneClientConfig(),

@@ -154,7 +154,7 @@ public class MappedFile extends ReferenceResource {
         this.file = new File(fileName);
         this.fileFromOffset = Long.parseLong(this.file.getName());
         boolean ok = false;
-
+        //确认路径没问题
         ensureDirOK(this.file.getParent());
 
         try {

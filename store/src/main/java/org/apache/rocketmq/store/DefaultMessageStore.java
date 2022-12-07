@@ -189,16 +189,17 @@ public class DefaultMessageStore implements MessageStore {
                 result = result && this.scheduleMessageService.load();
             }
 
-            // load Commit Log
+            //TODO  load Commit Log
             result = result && this.commitLog.load();
 
-            // load Consume Queue
+            //TODO load Consume Queue
             result = result && this.loadConsumeQueue();
 
             if (result) {
+            	//TODO  load CheckPoint
                 this.storeCheckpoint =
                     new StoreCheckpoint(StorePathConfigHelper.getStoreCheckpoint(this.messageStoreConfig.getStorePathRootDir()));
-
+              	//TODO  load Index
                 this.indexService.load(lastExitOK);
 
                 this.recover(lastExitOK);

@@ -80,7 +80,7 @@ public class CommitLog {
         } else {
             this.flushCommitLogService = new FlushRealTimeService();
         }
-
+        // 堆外内存缓冲,线程每隔200ms将byteBuffer新追加内容提交到MappedByteBuffer中
         this.commitLogService = new CommitRealTimeService();
 
         this.appendMessageCallback = new DefaultAppendMessageCallback(defaultMessageStore.getMessageStoreConfig().getMaxMessageSize());
@@ -90,6 +90,7 @@ public class CommitLog {
                 return new MessageExtBatchEncoder(defaultMessageStore.getMessageStoreConfig().getMaxMessageSize());
             }
         };
+        //useReentrantLockWhenPutMessage 参数是false 异步刷盘建议使用自旋 ,同步刷盘 建议使用冲入锁
         this.putMessageLock = defaultMessageStore.getMessageStoreConfig().isUseReentrantLockWhenPutMessage() ? new PutMessageReentrantLock() : new PutMessageSpinLock();
 
     }
