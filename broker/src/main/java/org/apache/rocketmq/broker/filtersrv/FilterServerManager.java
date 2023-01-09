@@ -63,7 +63,7 @@ public class FilterServerManager {
             }
         }, 1000 * 5, 1000 * 30, TimeUnit.MILLISECONDS);
     }
-
+    //创建过滤服务
     public void createFilterServer() {
         int more =
             this.brokerController.getBrokerConfig().getFilterServerNums() - this.filterServerTable.size();
@@ -72,7 +72,7 @@ public class FilterServerManager {
             FilterServerUtil.callShell(cmd, log);
         }
     }
-
+    //组装开始命令
     private String buildStartCommand() {
         String config = "";
         if (BrokerStartup.configFile != null) {

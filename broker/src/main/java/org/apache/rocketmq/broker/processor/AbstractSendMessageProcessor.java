@@ -62,7 +62,10 @@ public abstract class AbstractSendMessageProcessor extends AsyncNettyRequestProc
     protected final Random random = new Random(System.currentTimeMillis());
     protected final SocketAddress storeHost;
     private List<SendMessageHook> sendMessageHookList;
-
+    /**
+     * 设置了brokerController和storeHost(包含IP和端口)
+     * @param brokerController
+     */
     public AbstractSendMessageProcessor(final BrokerController brokerController) {
         this.brokerController = brokerController;
         this.storeHost =

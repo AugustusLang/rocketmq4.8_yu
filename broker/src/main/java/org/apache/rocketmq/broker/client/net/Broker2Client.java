@@ -51,6 +51,15 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentMap;
 
+/**
+ * 是broker跟客户端之间的网络交互组件，主要负责检查生产者事务状态、通知消费者ids变化、复位偏移量、查询消费状态等；
+ * 核心职责是调用底层的Netty服务器RemotingServer去实际发送请求；
+ * 创建序列化对象RemotingCommand；
+ * 调用MessageDecoder.encode构建Body体；
+ * 调用Netty服务器RemotingServer发送请求；
+ * @author YuLang
+ *
+ */
 public class Broker2Client {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     private final BrokerController brokerController;
@@ -58,7 +67,14 @@ public class Broker2Client {
     public Broker2Client(BrokerController brokerController) {
         this.brokerController = brokerController;
     }
-
+    /**
+     * 检查生产者事务状态
+     * @param group
+     * @param channel
+     * @param requestHeader
+     * @param messageExt
+     * @throws Exception
+     */
     public void checkProducerTransactionState(
         final String group,
         final Channel channel,
@@ -74,13 +90,25 @@ public class Broker2Client {
                     group, messageExt.getMsgId(), e.toString());
         }
     }
-
+    /**
+     * 调用客户端
+     * @param channel
+     * @param request
+     * @return
+     * @throws RemotingSendRequestException
+     * @throws RemotingTimeoutException
+     * @throws InterruptedException
+     */
     public RemotingCommand callClient(final Channel channel,
                                       final RemotingCommand request
     ) throws RemotingSendRequestException, RemotingTimeoutException, InterruptedException {
         return this.brokerController.getRemotingServer().invokeSync(channel, request, 10000);
     }
-
+    /**
+     * 通知消费者ids发生改变
+     * @param channel
+     * @param consumerGroup
+     */
     public void notifyConsumerIdsChanged(
         final Channel channel,
         final String consumerGroup) {
@@ -91,10 +119,12 @@ public class Broker2Client {
 
         NotifyConsumerIdsChangedRequestHeader requestHeader = new NotifyConsumerIdsChangedRequestHeader();
         requestHeader.setConsumerGroup(consumerGroup);
+        //创建请求命令
         RemotingCommand request =
             RemotingCommand.createRequestCommand(RequestCode.NOTIFY_CONSUMER_IDS_CHANGED, requestHeader);
 
         try {
+        	//调用
             this.brokerController.getRemotingServer().invokeOneway(channel, request, 10);
         } catch (Exception e) {
             log.error("notifyConsumerIdsChanged exception. group={}, error={}", consumerGroup, e.toString());
@@ -104,7 +134,15 @@ public class Broker2Client {
     public RemotingCommand resetOffset(String topic, String group, long timeStamp, boolean isForce) {
         return resetOffset(topic, group, timeStamp, isForce, false);
     }
-
+    /**
+     * 重置Offset
+     * @param topic
+     * @param group
+     * @param timeStamp
+     * @param isForce
+     * @param isC
+     * @return
+     */
     public RemotingCommand resetOffset(String topic, String group, long timeStamp, boolean isForce,
                                        boolean isC) {
         final RemotingCommand response = RemotingCommand.createResponseCommand(null);
@@ -226,7 +264,13 @@ public class Broker2Client {
         }
         return list;
     }
-
+    /**
+     * 获取消费状态
+     * @param topic
+     * @param group
+     * @param originClientId
+     * @return
+     */
     public RemotingCommand getConsumeStatus(String topic, String group, String originClientId) {
         final RemotingCommand result = RemotingCommand.createResponseCommand(null);
 

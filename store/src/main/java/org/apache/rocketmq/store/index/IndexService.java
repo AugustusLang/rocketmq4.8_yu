@@ -153,7 +153,15 @@ public class IndexService {
             this.readWriteLock.writeLock().unlock();
         }
     }
-
+    /**
+     * 查询offset 根据 topic 搜索关键词 等
+     * @param topic
+     * @param key
+     * @param maxNum
+     * @param begin
+     * @param end
+     * @return
+     */
     public QueryOffsetResult queryOffset(String topic, String key, int maxNum, long begin, long end) {
         List<Long> phyOffsets = new ArrayList<Long>(maxNum);
 
@@ -161,10 +169,12 @@ public class IndexService {
         long indexLastUpdatePhyoffset = 0;
         maxNum = Math.min(maxNum, this.defaultMessageStore.getMessageStoreConfig().getMaxMsgsNumBatch());
         try {
+        	//加读锁
             this.readWriteLock.readLock().lock();
             if (!this.indexFileList.isEmpty()) {
                 for (int i = this.indexFileList.size(); i > 0; i--) {
                     IndexFile f = this.indexFileList.get(i - 1);
+                    //是否为最后的文件
                     boolean lastFile = i == this.indexFileList.size();
                     if (lastFile) {
                         indexLastUpdateTimestamp = f.getEndTimestamp();

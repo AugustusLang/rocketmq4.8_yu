@@ -183,6 +183,7 @@ public class ReplyMessageProcessor extends AbstractSendMessageProcessor implemen
                 replyMessageRequestHeader.setProperties(MessageDecoder.messageProperties2String(msg.getProperties()));
 
                 try {
+                	//调用netty 重推
                     RemotingCommand pushResponse = this.brokerController.getBroker2Client().callClient(channel, request);
                     assert pushResponse != null;
                     switch (pushResponse.getCode()) {

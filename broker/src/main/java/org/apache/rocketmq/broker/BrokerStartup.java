@@ -90,11 +90,11 @@ public class BrokerStartup {
     // 创建 BrokerController
     public static BrokerController createBrokerController(String[] args) {
         System.setProperty(RemotingCommand.REMOTING_VERSION_KEY, Integer.toString(MQVersion.CURRENT_VERSION));
-
+        // 设置默认 netty 的 socket 发送配置，128字节
         if (null == System.getProperty(NettySystemConfig.COM_ROCKETMQ_REMOTING_SOCKET_SNDBUF_SIZE)) {
             NettySystemConfig.socketSndbufSize = 131072;
         }
-
+        // 设置默认 netty 的 socket 接收配置，128字节
         if (null == System.getProperty(NettySystemConfig.COM_ROCKETMQ_REMOTING_SOCKET_RCVBUF_SIZE)) {
             NettySystemConfig.socketRcvbufSize = 131072;
         }
@@ -117,6 +117,7 @@ public class BrokerStartup {
             nettyClientConfig.setUseTLS(Boolean.parseBoolean(System.getProperty(TLS_ENABLE,
                 String.valueOf(TlsSystemConfig.tlsMode == TlsMode.ENFORCING))));
             nettyServerConfig.setListenPort(10911);
+            //消息存储配置
             final MessageStoreConfig messageStoreConfig = new MessageStoreConfig();
             //如果是slave
             if (BrokerRole.SLAVE == messageStoreConfig.getBrokerRole()) {

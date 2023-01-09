@@ -45,7 +45,9 @@ public class ProducerManager {
     public ConcurrentHashMap<String, ConcurrentHashMap<Channel, ClientChannelInfo>> getGroupChannelTable() {
         return groupChannelTable;
     }
-
+    /**
+     * 扫描不活动的管道 如果大于失效时间就删除
+     */
     public void scanNotActiveChannel() {
         for (final Map.Entry<String, ConcurrentHashMap<Channel, ClientChannelInfo>> entry : this.groupChannelTable
                 .entrySet()) {
@@ -59,6 +61,7 @@ public class ProducerManager {
                 final ClientChannelInfo info = item.getValue();
 
                 long diff = System.currentTimeMillis() - info.getLastUpdateTimestamp();
+                //如果大于失效时间 则删除
                 if (diff > CHANNEL_EXPIRED_TIMEOUT) {
                     it.remove();
                     clientChannelTable.remove(info.getClientId());
@@ -70,7 +73,11 @@ public class ProducerManager {
             }
         }
     }
-
+    /**
+     * 处理管道关闭事件 从clientChannelTable 删除
+     * @param remoteAddr
+     * @param channel
+     */
     public synchronized void doChannelCloseEvent(final String remoteAddr, final Channel channel) {
         if (channel != null) {
             for (final Map.Entry<String, ConcurrentHashMap<Channel, ClientChannelInfo>> entry : this.groupChannelTable
@@ -90,7 +97,11 @@ public class ProducerManager {
             }
         }
     }
-
+    /**
+     * 注册生产者 放入 groupChannelTable
+     * @param group
+     * @param clientChannelInfo
+     */
     public synchronized void registerProducer(final String group, final ClientChannelInfo clientChannelInfo) {
         ClientChannelInfo clientChannelInfoFound = null;
 
@@ -113,7 +124,11 @@ public class ProducerManager {
             clientChannelInfoFound.setLastUpdateTimestamp(System.currentTimeMillis());
         }
     }
-
+    /**
+     * 注销生产者 从 clientChannelTable 移除
+     * @param group
+     * @param clientChannelInfo
+     */
     public synchronized void unregisterProducer(final String group, final ClientChannelInfo clientChannelInfo) {
         ConcurrentHashMap<Channel, ClientChannelInfo> channelTable = this.groupChannelTable.get(group);
         if (null != channelTable && !channelTable.isEmpty()) {
@@ -130,7 +145,11 @@ public class ProducerManager {
             }
         }
     }
-
+    /**
+     * 获取活动的管道
+     * @param groupId
+     * @return
+     */
     public Channel getAvailableChannel(String groupId) {
         if (groupId == null) {
             return null;

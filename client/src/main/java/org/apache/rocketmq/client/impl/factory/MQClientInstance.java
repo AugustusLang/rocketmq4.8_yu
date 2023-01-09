@@ -131,6 +131,7 @@ public class MQClientInstance {
         this.nettyClientConfig.setClientCallbackExecutorThreads(clientConfig.getClientCallbackExecutorThreads());
         this.nettyClientConfig.setUseTLS(clientConfig.isUseTLS());
         this.clientRemotingProcessor = new ClientRemotingProcessor(this);
+        //MQClientAPIImpl 负责NetWork处理
         this.mQClientAPIImpl = new MQClientAPIImpl(this.nettyClientConfig, this.clientRemotingProcessor, rpcHook, clientConfig);
 
         if (this.clientConfig.getNamesrvAddr() != null) {
@@ -141,14 +142,15 @@ public class MQClientInstance {
         this.clientId = clientId;
 
         this.mQAdminImpl = new MQAdminImpl(this);
-
+        //发送消息PullMessageService 服务
         this.pullMessageService = new PullMessageService(this);
-
+        //RebalanceService 服务
         this.rebalanceService = new RebalanceService(this);
-
+        //default消息生产者
         this.defaultMQProducer = new DefaultMQProducer(MixAll.CLIENT_INNER_PRODUCER_GROUP);
+        //设置初始化信息  add ip instanceName等等
         this.defaultMQProducer.resetClientConfig(clientConfig);
-
+        //Consumer状态管理者
         this.consumerStatsManager = new ConsumerStatsManager(this.scheduledExecutorService);
 
         log.info("Created a new client Instance, InstanceIndex:{}, ClientID:{}, ClientConfig:{}, ClientVersion:{}, SerializerType:{}",
@@ -230,6 +232,7 @@ public class MQClientInstance {
                     this.serviceState = ServiceState.START_FAILED;
                     // If not specified,looking address from name server
                     if (null == this.clientConfig.getNamesrvAddr()) { // 地址为空 再去拿一次
+                    	//通过HttpTinClient get获取 NameServer地址
                         this.mQClientAPIImpl.fetchNameServerAddr();
                     }
                     // Start request-response channel
@@ -312,7 +315,7 @@ public class MQClientInstance {
                 }
             }
         }, 1000 * 10, this.clientConfig.getPersistConsumerOffsetInterval(), TimeUnit.MILLISECONDS);
-
+        //调整线程池 adjust(调整)
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -393,6 +396,7 @@ public class MQClientInstance {
      */
     private void cleanOfflineBroker() {
         try {
+        	//ReentrantLock.tryLock
             if (this.lockNamesrv.tryLock(LOCK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS))
                 try {
                     ConcurrentHashMap<String, HashMap<Long, String>> updatedTable = new ConcurrentHashMap<String, HashMap<Long, String>>();
@@ -476,7 +480,9 @@ public class MQClientInstance {
     public void sendHeartbeatToAllBrokerWithLock() {
         if (this.lockHeartbeat.tryLock()) {
             try {
+            	//向所有Broker发送心跳信息
                 this.sendHeartbeatToAllBroker();
+                	//上传Filter信息
                 this.uploadFilterClassSource();
             } catch (final Exception e) {
                 log.error("sendHeartbeatToAllBroker exception", e);
@@ -614,6 +620,7 @@ public class MQClientInstance {
     public boolean updateTopicRouteInfoFromNameServer(final String topic, boolean isDefault,
         DefaultMQProducer defaultMQProducer) {
         try {
+        	//ReentrantLock.tryLock
             if (this.lockNamesrv.tryLock(LOCK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
                 try {
                     TopicRouteData topicRouteData;
@@ -647,7 +654,7 @@ public class MQClientInstance {
                                 this.brokerAddrTable.put(bd.getBrokerName(), bd.getBrokerAddrs());
                             }
 
-                            // Update Pub info
+                            // Update Pub info  updateTopicPublishInfo
                             {
                                 TopicPublishInfo publishInfo = topicRouteData2TopicPublishInfo(topic, topicRouteData);
                                 publishInfo.setHaveTopicRouterInfo(true);
@@ -656,12 +663,13 @@ public class MQClientInstance {
                                     Entry<String, MQProducerInner> entry = it.next();
                                     MQProducerInner impl = entry.getValue();
                                     if (impl != null) {
+                                    	// 放入ConcurrentMap<String/* topic */, TopicPublishInfo> topicPublishInfoTable 中
                                         impl.updateTopicPublishInfo(topic, publishInfo);
                                     }
                                 }
                             }
 
-                            // Update sub info
+                            // Update sub info updateTopicSubscribeInfo
                             {
                                 Set<MessageQueue> subscribeInfo = topicRouteData2TopicSubscribeInfo(topic, topicRouteData);
                                 Iterator<Entry<String, MQConsumerInner>> it = this.consumerTable.entrySet().iterator();
@@ -669,11 +677,13 @@ public class MQClientInstance {
                                     Entry<String, MQConsumerInner> entry = it.next();
                                     MQConsumerInner impl = entry.getValue();
                                     if (impl != null) {
+                                    	// 放入 ConcurrentMap<String/* topic */, Set<MessageQueue>> topicSubscribeInfoTable中
                                         impl.updateTopicSubscribeInfo(topic, subscribeInfo);
                                     }
                                 }
                             }
                             log.info("topicRouteTable.put. Topic = {}, TopicRouteData[{}]", topic, cloneTopicRouteData);
+                            // ConcurrentMap<String/* Topic */, TopicRouteData> topicRouteTable
                             this.topicRouteTable.put(topic, cloneTopicRouteData);
                             return true;
                         }

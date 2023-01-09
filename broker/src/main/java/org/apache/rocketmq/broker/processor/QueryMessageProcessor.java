@@ -67,7 +67,13 @@ public class QueryMessageProcessor extends AsyncNettyRequestProcessor implements
     public boolean rejectRequest() {
         return false;
     }
-
+	/**
+	 * 查询消息
+	 * @param ctx
+	 * @param request
+	 * @return
+	 * @throws RemotingCommandException
+	 */
     public RemotingCommand queryMessage(ChannelHandlerContext ctx, RemotingCommand request)
         throws RemotingCommandException {
         final RemotingCommand response =
@@ -84,7 +90,7 @@ public class QueryMessageProcessor extends AsyncNettyRequestProcessor implements
         if (isUniqueKey != null && isUniqueKey.equals("true")) {
             requestHeader.setMaxNum(this.brokerController.getMessageStoreConfig().getDefaultQueryMaxNum());
         }
-
+        //查询消息
         final QueryMessageResult queryMessageResult =
             this.brokerController.getMessageStore().queryMessage(requestHeader.getTopic(),
                 requestHeader.getKey(), requestHeader.getMaxNum(), requestHeader.getBeginTimestamp(),

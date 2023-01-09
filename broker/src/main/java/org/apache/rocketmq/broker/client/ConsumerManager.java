@@ -94,7 +94,17 @@ public class ConsumerManager {
             }
         }
     }
-
+    /**
+     * 注册客户端
+     * @param group
+     * @param clientChannelInfo
+     * @param consumeType
+     * @param messageModel
+     * @param consumeFromWhere
+     * @param subList
+     * @param isNotifyConsumerIdsChangedEnable
+     * @return
+     */
     public boolean registerConsumer(final String group, final ClientChannelInfo clientChannelInfo,
         ConsumeType consumeType, MessageModel messageModel, ConsumeFromWhere consumeFromWhere,
         final Set<SubscriptionData> subList, boolean isNotifyConsumerIdsChangedEnable) {

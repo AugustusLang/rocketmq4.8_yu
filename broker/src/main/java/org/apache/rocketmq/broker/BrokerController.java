@@ -132,6 +132,7 @@ public class BrokerController {
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryImpl(
         "BrokerControllerScheduledThread"));
     private final SlaveSynchronize slaveSynchronize;
+    //短暂存放生产者发送的消息的队列
     private final BlockingQueue<Runnable> sendThreadPoolQueue;
     private final BlockingQueue<Runnable> pullThreadPoolQueue;
     private final BlockingQueue<Runnable> replyThreadPoolQueue;
@@ -175,39 +176,62 @@ public class BrokerController {
         final NettyClientConfig nettyClientConfig,
         final MessageStoreConfig messageStoreConfig
     ) {
+    	//broker配置
         this.brokerConfig = brokerConfig;
         this.nettyServerConfig = nettyServerConfig;
         this.nettyClientConfig = nettyClientConfig;
         this.messageStoreConfig = messageStoreConfig;
+        //消费者Offset管理者
         this.consumerOffsetManager = new ConsumerOffsetManager(this);
+        //话题配置管理者
         this.topicConfigManager = new TopicConfigManager(this);
+        //拉取消息的处理器
         this.pullMessageProcessor = new PullMessageProcessor(this);
+        //长轮询的实现类。
         this.pullRequestHoldService = new PullRequestHoldService(this);
+        //通知消息到达的监听器
         this.messageArrivingListener = new NotifyMessageArrivingListener(this.pullRequestHoldService);
+        //默认的ConsumerId改变监视器
         this.consumerIdsChangeListener = new DefaultConsumerIdsChangeListener(this);
+        //客户端管理器
         this.consumerManager = new ConsumerManager(this.consumerIdsChangeListener);
+        //客户端过滤器管理器
         this.consumerFilterManager = new ConsumerFilterManager(this);
+        //生产者
         this.producerManager = new ProducerManager();
+        
         this.clientHousekeepingService = new ClientHousekeepingService(this);
+        //是broker跟客户端之间的网络交互组件，主要负责检查生产者事务状态、通知消费者ids变化、复位偏移量、查询消费状态等；
         this.broker2Client = new Broker2Client(this);
+        //订阅组管理者
         this.subscriptionGroupManager = new SubscriptionGroupManager(this);
+        //broker对外的API
         this.brokerOuterAPI = new BrokerOuterAPI(nettyClientConfig);
+        //过滤器管理器
         this.filterServerManager = new FilterServerManager(this);
-
+        //同步配置信息到slave （保存到.bak文件）
         this.slaveSynchronize = new SlaveSynchronize(this);
-
+        //发送队列
         this.sendThreadPoolQueue = new LinkedBlockingQueue<Runnable>(this.brokerConfig.getSendThreadPoolQueueCapacity());
+        //推送队列
         this.pullThreadPoolQueue = new LinkedBlockingQueue<Runnable>(this.brokerConfig.getPullThreadPoolQueueCapacity());
+        //重试队列
         this.replyThreadPoolQueue = new LinkedBlockingQueue<Runnable>(this.brokerConfig.getReplyThreadPoolQueueCapacity());
+        //查询对垒
         this.queryThreadPoolQueue = new LinkedBlockingQueue<Runnable>(this.brokerConfig.getQueryThreadPoolQueueCapacity());
+        //客户端管理队列
         this.clientManagerThreadPoolQueue = new LinkedBlockingQueue<Runnable>(this.brokerConfig.getClientManagerThreadPoolQueueCapacity());
+        //消费者管理对垒
         this.consumerManagerThreadPoolQueue = new LinkedBlockingQueue<Runnable>(this.brokerConfig.getConsumerManagerThreadPoolQueueCapacity());
+        //心跳队列
         this.heartbeatThreadPoolQueue = new LinkedBlockingQueue<Runnable>(this.brokerConfig.getHeartbeatThreadPoolQueueCapacity());
+        //事务结束队列
         this.endTransactionThreadPoolQueue = new LinkedBlockingQueue<Runnable>(this.brokerConfig.getEndTransactionPoolQueueCapacity());
-
+        //broker状态管理
         this.brokerStatsManager = new BrokerStatsManager(this.brokerConfig.getBrokerClusterName());
+        //设置host
         this.setStoreHost(new InetSocketAddress(this.getBrokerConfig().getBrokerIP1(), this.getNettyServerConfig().getListenPort()));
-
+        //快速失败  是线程池满的时候，再来调用请求就会直接拒绝掉
         this.brokerFastFailure = new BrokerFastFailure(this);
         this.configuration = new Configuration(
             log,
@@ -658,6 +682,7 @@ public class BrokerController {
     }
 
     public void protectBroker() {
+    	//如果客户端消费太慢，导致无法消费
         if (this.brokerConfig.isDisableConsumeIfConsumerReadSlowly()) {
             final Iterator<Map.Entry<String, MomentStatsItem>> it = this.brokerStatsManager.getMomentStatsItemSetFallSize().getStatsItemTable().entrySet().iterator();
             while (it.hasNext()) {

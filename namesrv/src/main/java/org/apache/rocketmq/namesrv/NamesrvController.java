@@ -64,26 +64,30 @@ public class NamesrvController {
         this.namesrvConfig = namesrvConfig;
         this.nettyServerConfig = nettyServerConfig;
         this.kvConfigManager = new KVConfigManager(this);
+        //初始化 路由信息 Broker TopicQueue
         this.routeInfoManager = new RouteInfoManager();
+        //创建broker连接事件处理服务
         this.brokerHousekeepingService = new BrokerHousekeepingService(this);
+        //创建配置信息  NameSrv 和nettyServer
         this.configuration = new Configuration(
             log,
             this.namesrvConfig, this.nettyServerConfig
         );
+        //设置存储路径
         this.configuration.setStorePathFromConfig(this.namesrvConfig, "configStorePath");
     }
-
+    //初始化 controller，主要是开启 rpc 远程连接、定时任务等
     public boolean initialize() {
 
         this.kvConfigManager.load();
-
+        //创建rpc服务 用户和broker连接
         this.remotingServer = new NettyRemotingServer(this.nettyServerConfig, this.brokerHousekeepingService);
-
+        //创建远程线程池
         this.remotingExecutor =
             Executors.newFixedThreadPool(nettyServerConfig.getServerWorkerThreads(), new ThreadFactoryImpl("RemotingExecutorThread_"));
-
+        //TODO 核心   注册
         this.registerProcessor();
-
+        //定时任务  扫描不活跃的broker
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -91,7 +95,7 @@ public class NamesrvController {
                 NamesrvController.this.routeInfoManager.scanNotActiveBroker();
             }
         }, 5, 10, TimeUnit.SECONDS);
-
+      //周期性把kvConfig中的数据 持久化到硬盘上保存为json格式
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -99,7 +103,7 @@ public class NamesrvController {
                 NamesrvController.this.kvConfigManager.printAllPeriodically();
             }
         }, 1, 10, TimeUnit.MINUTES);
-
+        //如果使用TLS 安全传输协议
         if (TlsSystemConfig.tlsMode != TlsMode.DISABLED) {
             // Register a listener to reload SslContext
             try {

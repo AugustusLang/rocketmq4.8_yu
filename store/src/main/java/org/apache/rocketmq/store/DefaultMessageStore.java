@@ -199,9 +199,9 @@ public class DefaultMessageStore implements MessageStore {
             	//TODO  load CheckPoint
                 this.storeCheckpoint =
                     new StoreCheckpoint(StorePathConfigHelper.getStoreCheckpoint(this.messageStoreConfig.getStorePathRootDir()));
-              	//TODO  load Index
+              	//TODO 加载 index 文件，如果不是正常退出 并且比 checkpoint 文件时间大，则删除 index 文件
                 this.indexService.load(lastExitOK);
-
+                // 还原 cosumeQueue 文件，接着根据是否异常退出，恢复不正常的 commitLog 文件
                 this.recover(lastExitOK);
 
                 log.info("load over, and the max phy offset = {}", this.getMaxPhyOffset());
@@ -414,9 +414,12 @@ public class DefaultMessageStore implements MessageStore {
         }
         return PutMessageStatus.PUT_OK;
     }
-
+    /**
+     * 异步放入消息
+     */
     @Override
     public CompletableFuture<PutMessageResult> asyncPutMessage(MessageExtBrokerInner msg) {
+    	//检查存储状态
         PutMessageStatus checkStoreStatus = this.checkStoreStatus();
         if (checkStoreStatus != PutMessageStatus.PUT_OK) {
             return CompletableFuture.completedFuture(new PutMessageResult(checkStoreStatus, null));
@@ -428,10 +431,12 @@ public class DefaultMessageStore implements MessageStore {
         }
 
         long beginTime = this.getSystemClock().now();
+        //异步防止数据
         CompletableFuture<PutMessageResult> putResultFuture = this.commitLog.asyncPutMessage(msg);
 
         putResultFuture.thenAccept((result) -> {
             long elapsedTime = this.getSystemClock().now() - beginTime;
+            //计算消耗的时间并且存起来
             if (elapsedTime > 500) {
                 log.warn("putMessage not in lock elapsed time(ms)={}, bodyLength={}", elapsedTime, msg.getBody().length);
             }
@@ -531,6 +536,12 @@ public class DefaultMessageStore implements MessageStore {
         return result;
     }
 
+   
+    /**
+     * 判断写commlitLog是否忙
+     * 我们都知道commitlog 是单线程顺序追加写的，要想实现单线程顺序追加写，就得在追加写之前获取这个锁，
+     * 这个OSPageCacheBusy就是按照某个线程持有锁的时间算出来的，当一次写入持有锁时间1s以上，RocketMQ就会认为OSPageCacheBusy，
+     */
     @Override
     public boolean isOSPageCacheBusy() {
         long begin = this.getCommitLog().getBeginTimeInLock();
@@ -552,10 +563,13 @@ public class DefaultMessageStore implements MessageStore {
     public CommitLog getCommitLog() {
         return commitLog;
     }
-
+	/**
+	 * 获取消息的具体实现
+	 */
     public GetMessageResult getMessage(final String group, final String topic, final int queueId, final long offset,
         final int maxMsgNums,
         final MessageFilter messageFilter) {
+    	//检查msgStore状态
         if (this.shutdown) {
             log.warn("message store has shutdown, so getMessage is forbidden");
             return null;
@@ -574,31 +588,39 @@ public class DefaultMessageStore implements MessageStore {
         long maxOffset = 0;
 
         GetMessageResult getResult = new GetMessageResult();
-
+        //当前CommitLog的最大偏移量
         final long maxOffsetPy = this.commitLog.getMaxOffset();
-
+        //根据topic和queueId查询具体消息消费队列
         ConsumeQueue consumeQueue = findConsumeQueue(topic, queueId);
         if (consumeQueue != null) {
+        	//当前消息队列最小偏移量
+        	//当前消息队列最大偏移量
             minOffset = consumeQueue.getMinOffsetInQueue();
             maxOffset = consumeQueue.getMaxOffsetInQueue();
 
             if (maxOffset == 0) {
                 status = GetMessageStatus.NO_MESSAGE_IN_QUEUE;
                 nextBeginOffset = nextOffsetCorrection(offset, 0);
+             // broker 为 master时，nextBeginOffset=offset， 否则 nextBeginOffset=0
             } else if (offset < minOffset) {
                 status = GetMessageStatus.OFFSET_TOO_SMALL;
                 nextBeginOffset = nextOffsetCorrection(offset, minOffset);
+             // broker 为 master时，nextBeginOffset=offset， 否则 nextBeginOffset=minOffset
             } else if (offset == maxOffset) {
                 status = GetMessageStatus.OFFSET_OVERFLOW_ONE;
                 nextBeginOffset = nextOffsetCorrection(offset, offset);
+             // 设置下次的拉取偏移量为 maxOffset
             } else if (offset > maxOffset) {
                 status = GetMessageStatus.OFFSET_OVERFLOW_BADLY;
+             // broker 为 master时，nextBeginOffset=offset， 否则 nextBeginOffset=minOffset
                 if (0 == minOffset) {
                     nextBeginOffset = nextOffsetCorrection(offset, minOffset);
                 } else {
                     nextBeginOffset = nextOffsetCorrection(offset, maxOffset);
                 }
             } else {
+            	//当 offset 是正常的，处于[minOffset, maxOffset] 区间调用
+            	//org.apache.rocketmq.store.ConsumeQueue#getIndexBuffer：根据 startIndex 获取消息消费队列条目
                 SelectMappedBufferResult bufferConsumeQueue = consumeQueue.getIndexBuffer(offset);
                 if (bufferConsumeQueue != null) {
                     try {
@@ -1197,11 +1219,14 @@ public class DefaultMessageStore implements MessageStore {
     }
 
     public MessageExt lookMessageByOffset(long commitLogOffset, int size) {
+    	//根据位置获取消息字符串
         SelectMappedBufferResult sbr = this.commitLog.getMessage(commitLogOffset, size);
         if (null != sbr) {
             try {
+            	//将字符串解析为消息
                 return MessageDecoder.decode(sbr.getByteBuffer(), true, false);
             } finally {
+            	//释放mmap和资源
                 sbr.release();
             }
         }

@@ -92,7 +92,11 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
     public NettyRemotingServer(final NettyServerConfig nettyServerConfig) {
         this(nettyServerConfig, null);
     }
-
+    /**
+     * nettyServer 服务器
+     * @param nettyServerConfig
+     * @param channelEventListener
+     */
     public NettyRemotingServer(final NettyServerConfig nettyServerConfig,
         final ChannelEventListener channelEventListener) {
         super(nettyServerConfig.getServerOnewaySemaphoreValue(), nettyServerConfig.getServerAsyncSemaphoreValue());
@@ -411,7 +415,11 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
             ctx.fireChannelRead(msg.retain());
         }
     }
-
+    /**
+     * NettyServer处理器
+     * @author YuLang
+     *
+     */
     @ChannelHandler.Sharable
     class NettyServerHandler extends SimpleChannelInboundHandler<RemotingCommand> {
 

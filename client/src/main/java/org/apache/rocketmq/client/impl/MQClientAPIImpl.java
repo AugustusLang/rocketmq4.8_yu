@@ -190,6 +190,7 @@ public class MQClientAPIImpl {
         this.clientRemotingProcessor = clientRemotingProcessor;
 
         this.remotingClient.registerRPCHook(rpcHook);
+        // 放入 HashMap<Integer/* request code */, Pair<NettyRequestProcessor, ExecutorService>>  processorTable
         this.remotingClient.registerProcessor(RequestCode.CHECK_TRANSACTION_STATE, this.clientRemotingProcessor, null);
 
         this.remotingClient.registerProcessor(RequestCode.NOTIFY_CONSUMER_IDS_CHANGED, this.clientRemotingProcessor, null);
@@ -212,7 +213,7 @@ public class MQClientAPIImpl {
     public RemotingClient getRemotingClient() {
         return remotingClient;
     }
-
+    //通过HttpTinClient get获取 NameServer地址
     public String fetchNameServerAddr() {
         try {
             String addrs = this.topAddressing.fetchNSAddr();
@@ -748,7 +749,20 @@ public class MQClientAPIImpl {
         sendResult.setRegionId(regionId);
         return sendResult;
     }
-
+    /**
+     * 推送消息的真正实现
+     * 消费端发送了消息拉取的命令，RequestCode=PULL_MESSAGE, 
+     * 在 broker 端处理消息的拉取入口org.apache.rocketmq.broker.processor.PullMessageProcessor#processRequest
+     * @param addr
+     * @param requestHeader
+     * @param timeoutMillis
+     * @param communicationMode
+     * @param pullCallback
+     * @return
+     * @throws RemotingException
+     * @throws MQBrokerException
+     * @throws InterruptedException
+     */
     public PullResult pullMessage(
         final String addr,
         final PullMessageRequestHeader requestHeader,
@@ -756,6 +770,7 @@ public class MQClientAPIImpl {
         final CommunicationMode communicationMode,
         final PullCallback pullCallback
     ) throws RemotingException, MQBrokerException, InterruptedException {
+    	//createRequestCommand
         RemotingCommand request = RemotingCommand.createRequestCommand(RequestCode.PULL_MESSAGE, requestHeader);
 
         switch (communicationMode) {
@@ -763,9 +778,11 @@ public class MQClientAPIImpl {
                 assert false;
                 return null;
             case ASYNC:
+            	//异步
                 this.pullMessageAsync(addr, request, timeoutMillis, pullCallback);
                 return null;
             case SYNC:
+            	//同步
                 return this.pullMessageSync(addr, request, timeoutMillis);
             default:
                 assert false;
@@ -774,7 +791,15 @@ public class MQClientAPIImpl {
 
         return null;
     }
-
+    /**
+     * 异步调用数据
+     * @param addr
+     * @param request
+     * @param timeoutMillis
+     * @param pullCallback
+     * @throws RemotingException
+     * @throws InterruptedException
+     */
     private void pullMessageAsync(
         final String addr,
         final RemotingCommand request,
@@ -789,7 +814,7 @@ public class MQClientAPIImpl {
                     try {
                         PullResult pullResult = MQClientAPIImpl.this.processPullResponse(response, addr);
                         assert pullResult != null;
-                        pullCallback.onSuccess(pullResult);
+                        pullCallback.onSuccess(pullResult);  //此处和
                     } catch (Exception e) {
                         pullCallback.onException(e);
                     }
@@ -816,7 +841,7 @@ public class MQClientAPIImpl {
         assert response != null;
         return this.processPullResponse(response, addr);
     }
-
+    //处理response
     private PullResult processPullResponse(
         final RemotingCommand response,
         final String addr) throws MQBrokerException, RemotingCommandException {

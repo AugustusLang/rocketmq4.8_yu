@@ -62,11 +62,11 @@ public class DefaultRequestProcessor extends AsyncNettyRequestProcessor implemen
     private static InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
 
     protected final NamesrvController namesrvController;
-
+    //用于接收Broker 或者 producer 发送的处理请求
     public DefaultRequestProcessor(NamesrvController namesrvController) {
         this.namesrvController = namesrvController;
     }
-
+    //用于接收Broker 或者 producer 发送的处理请求
     @Override
     public RemotingCommand processRequest(ChannelHandlerContext ctx,
         RemotingCommand request) throws RemotingCommandException {
@@ -88,7 +88,7 @@ public class DefaultRequestProcessor extends AsyncNettyRequestProcessor implemen
                 return this.deleteKVConfig(ctx, request);
             case RequestCode.QUERY_DATA_VERSION:
                 return queryBrokerTopicConfig(ctx, request);
-            case RequestCode.REGISTER_BROKER:
+            case RequestCode.REGISTER_BROKER: //Broker 注册
                 Version brokerVersion = MQVersion.value2Version(request.getVersion());
                 if (brokerVersion.ordinal() >= MQVersion.Version.V3_0_11.ordinal()) {
                     return this.registerBrokerWithFilterServer(ctx, request);
@@ -96,7 +96,7 @@ public class DefaultRequestProcessor extends AsyncNettyRequestProcessor implemen
                     return this.registerBroker(ctx, request);
                 }
             case RequestCode.UNREGISTER_BROKER:
-                return this.unregisterBroker(ctx, request);
+                return this.unregisterBroker(ctx, request);//注销broker
             case RequestCode.GET_ROUTEINFO_BY_TOPIC:
                 return this.getRouteInfoByTopic(ctx, request);
             case RequestCode.GET_BROKER_CLUSTER_INFO:
@@ -274,11 +274,19 @@ public class DefaultRequestProcessor extends AsyncNettyRequestProcessor implemen
         responseHeader.setChanged(changed);
         return response;
     }
-
+    /**
+     * 注册Broker
+     * @param ctx
+     * @param request
+     * @return
+     * @throws RemotingCommandException
+     */
     public RemotingCommand registerBroker(ChannelHandlerContext ctx,
         RemotingCommand request) throws RemotingCommandException {
         final RemotingCommand response = RemotingCommand.createResponseCommand(RegisterBrokerResponseHeader.class);
+        //应答头
         final RegisterBrokerResponseHeader responseHeader = (RegisterBrokerResponseHeader) response.readCustomHeader();
+        //请求头
         final RegisterBrokerRequestHeader requestHeader =
             (RegisterBrokerRequestHeader) request.decodeCommandCustomHeader(RegisterBrokerRequestHeader.class);
 
@@ -287,7 +295,7 @@ public class DefaultRequestProcessor extends AsyncNettyRequestProcessor implemen
             response.setRemark("crc32 not match");
             return response;
         }
-
+        //topic 配置信息的序列化的包装类
         TopicConfigSerializeWrapper topicConfigWrapper;
         if (request.getBody() != null) {
             topicConfigWrapper = TopicConfigSerializeWrapper.decode(request.getBody(), TopicConfigSerializeWrapper.class);
@@ -296,7 +304,17 @@ public class DefaultRequestProcessor extends AsyncNettyRequestProcessor implemen
             topicConfigWrapper.getDataVersion().setCounter(new AtomicLong(0));
             topicConfigWrapper.getDataVersion().setTimestamp(0);
         }
-
+	    /**
+	     * 注册Broker
+	     * 1\注册服务接收到broker发送的请求,请求玛为register_broker 执行路由注册
+	     * 2\由于是写操作 先加锁,将broker放入对应的集群中()
+	     * 3\将brokerId加入到broker地址集合中(clusterAddrTable)
+	     * 4\如果当前broke为master,并且broker配置信息发生变化或者是初次注册,
+	     * 	则需要创建或者更新topic路由的元数据,因为topic中对应了broker的信息,所以需要一起同步
+	     * 5\更新broker再brokerLiveInfo中的存货时间为当前时间(120过期)
+	     * 6\更新broker对应的过滤器server地址列表
+	     * 7\如果broker是从节点,那么更新brokerMaster节点信息 注册完毕 执行解锁
+	     **/
         RegisterBrokerResult result = this.namesrvController.getRouteInfoManager().registerBroker(
             requestHeader.getClusterName(),
             requestHeader.getBrokerAddr(),
@@ -317,7 +335,13 @@ public class DefaultRequestProcessor extends AsyncNettyRequestProcessor implemen
         response.setRemark(null);
         return response;
     }
-
+    /**
+     * 注销Broker
+     * @param ctx
+     * @param request
+     * @return
+     * @throws RemotingCommandException
+     */
     public RemotingCommand unregisterBroker(ChannelHandlerContext ctx,
         RemotingCommand request) throws RemotingCommandException {
         final RemotingCommand response = RemotingCommand.createResponseCommand(null);
@@ -334,13 +358,20 @@ public class DefaultRequestProcessor extends AsyncNettyRequestProcessor implemen
         response.setRemark(null);
         return response;
     }
-
+    /**
+     * 发现路由  根据话题查询路由信息
+     * RocketMQ 路由发现是非实时的，当 Topic 路由出现变化后， NameServer 不主动推送给客户端而是由客户端定时拉取主题最新的路由。
+     * @param ctx
+     * @param request
+     * @return
+     * @throws RemotingCommandException
+     */
     public RemotingCommand getRouteInfoByTopic(ChannelHandlerContext ctx,
         RemotingCommand request) throws RemotingCommandException {
         final RemotingCommand response = RemotingCommand.createResponseCommand(null);
         final GetRouteInfoRequestHeader requestHeader =
             (GetRouteInfoRequestHeader) request.decodeCommandCustomHeader(GetRouteInfoRequestHeader.class);
-
+        // 获取 topic 路由信息
         TopicRouteData topicRouteData = this.namesrvController.getRouteInfoManager().pickupTopicRouteData(requestHeader.getTopic());
 
         if (topicRouteData != null) {

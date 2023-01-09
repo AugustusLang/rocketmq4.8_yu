@@ -135,6 +135,7 @@ public abstract class NettyRemotingAbstract {
     }
 
     /**
+     * 处理接收消息
      * Entry of incoming command processing.
      *
      * <p>
@@ -154,9 +155,11 @@ public abstract class NettyRemotingAbstract {
         final RemotingCommand cmd = msg;
         if (cmd != null) {
             switch (cmd.getType()) {
+            	//请求
                 case REQUEST_COMMAND:
                     processRequestCommand(ctx, cmd);
                     break;
+                //应答
                 case RESPONSE_COMMAND:
                     processResponseCommand(ctx, cmd);
                     break;
@@ -184,6 +187,7 @@ public abstract class NettyRemotingAbstract {
 
 
     /**
+     * 处理请求和命令
      * Process incoming request command issued by remote peer.
      *
      * @param ctx channel handler context.
@@ -220,10 +224,12 @@ public abstract class NettyRemotingAbstract {
                                 }
                             }
                         };
+                        //如果是异步请求
                         if (pair.getObject1() instanceof AsyncNettyRequestProcessor) {
                             AsyncNettyRequestProcessor processor = (AsyncNettyRequestProcessor)pair.getObject1();
                             processor.asyncProcessRequest(ctx, cmd, callback);
                         } else {
+                        	//同步请求
                             NettyRequestProcessor processor = pair.getObject1();
                             RemotingCommand response = processor.processRequest(ctx, cmd);
                             callback.callback(response);
@@ -231,7 +237,7 @@ public abstract class NettyRemotingAbstract {
                     } catch (Throwable e) {
                         log.error("process request exception", e);
                         log.error(cmd.toString());
-
+                        
                         if (!cmd.isOnewayRPC()) {
                             final RemotingCommand response = RemotingCommand.createResponseCommand(RemotingSysResponseCode.SYSTEM_ERROR,
                                 RemotingHelper.exceptionSimpleDesc(e));
@@ -445,7 +451,17 @@ public abstract class NettyRemotingAbstract {
             this.responseTable.remove(opaque);
         }
     }
-
+    /**
+     * 异步调用的实现
+     * @param channel
+     * @param request
+     * @param timeoutMillis
+     * @param invokeCallback
+     * @throws InterruptedException
+     * @throws RemotingTooMuchRequestException
+     * @throws RemotingTimeoutException
+     * @throws RemotingSendRequestException
+     */
     public void invokeAsyncImpl(final Channel channel, final RemotingCommand request, final long timeoutMillis,
         final InvokeCallback invokeCallback)
         throws InterruptedException, RemotingTooMuchRequestException, RemotingTimeoutException, RemotingSendRequestException {
@@ -530,10 +546,13 @@ public abstract class NettyRemotingAbstract {
     public void invokeOnewayImpl(final Channel channel, final RemotingCommand request, final long timeoutMillis)
         throws InterruptedException, RemotingTooMuchRequestException, RemotingTimeoutException, RemotingSendRequestException {
         request.markOnewayRPC();
+        // 信号量获得锁
         boolean acquired = this.semaphoreOneway.tryAcquire(timeoutMillis, TimeUnit.MILLISECONDS);
         if (acquired) {
+        	//信号量释放一个
             final SemaphoreReleaseOnlyOnce once = new SemaphoreReleaseOnlyOnce(this.semaphoreOneway);
             try {
+            	//添加一个Listener 用于在执行完成之后释放锁
                 channel.writeAndFlush(request).addListener(new ChannelFutureListener() {
                     @Override
                     public void operationComplete(ChannelFuture f) throws Exception {
@@ -544,6 +563,7 @@ public abstract class NettyRemotingAbstract {
                     }
                 });
             } catch (Exception e) {
+            	//执行成功之后释放一个锁
                 once.release();
                 log.warn("write send a request command to channel <" + channel.remoteAddress() + "> failed.");
                 throw new RemotingSendRequestException(RemotingHelper.parseChannelRemoteAddr(channel), e);

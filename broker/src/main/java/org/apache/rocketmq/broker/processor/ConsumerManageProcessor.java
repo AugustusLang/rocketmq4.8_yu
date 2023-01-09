@@ -67,7 +67,13 @@ public class ConsumerManageProcessor extends AsyncNettyRequestProcessor implemen
     public boolean rejectRequest() {
         return false;
     }
-
+    /**
+     * 获取用户组下面的所有消费者
+     * @param ctx
+     * @param request
+     * @return
+     * @throws RemotingCommandException
+     */
     public RemotingCommand getConsumerListByGroup(ChannelHandlerContext ctx, RemotingCommand request)
         throws RemotingCommandException {
         final RemotingCommand response =
@@ -75,7 +81,7 @@ public class ConsumerManageProcessor extends AsyncNettyRequestProcessor implemen
         final GetConsumerListByGroupRequestHeader requestHeader =
             (GetConsumerListByGroupRequestHeader) request
                 .decodeCommandCustomHeader(GetConsumerListByGroupRequestHeader.class);
-
+        //根据组名获取组信息
         ConsumerGroupInfo consumerGroupInfo =
             this.brokerController.getConsumerManager().getConsumerGroupInfo(
                 requestHeader.getConsumerGroup());

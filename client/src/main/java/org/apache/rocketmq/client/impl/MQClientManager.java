@@ -44,7 +44,8 @@ public class MQClientManager {
         return getOrCreateMQClientInstance(clientConfig, null);
     }
     /**
-     * 
+     *  初始化  mQClientAPIImpl	mQClientAPIImpl	pullMessageService	
+     *  	rebalanceService	defaultMQProducer	consumerStatsManager
      * @param clientConfig  客户端配置
      * @param rpcHook jvm 钩子
      * @return

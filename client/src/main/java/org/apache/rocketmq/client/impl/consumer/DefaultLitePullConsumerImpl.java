@@ -844,6 +844,7 @@ public class DefaultLitePullConsumerImpl implements MQConsumerInner {
             CommunicationMode.SYNC,
             null
         );
+        //处理拉取结果
         this.pullAPIWrapper.processPullResult(mq, pullResult, subscriptionData);
         return pullResult;
     }

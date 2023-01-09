@@ -27,7 +27,11 @@ import org.apache.rocketmq.common.protocol.body.ConsumerOffsetSerializeWrapper;
 import org.apache.rocketmq.common.protocol.body.SubscriptionGroupWrapper;
 import org.apache.rocketmq.common.protocol.body.TopicConfigSerializeWrapper;
 import org.apache.rocketmq.store.config.StorePathConfigHelper;
-
+/**
+ * 从节点同步
+ * @author YuLang
+ *
+ */
 public class SlaveSynchronize {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     private final BrokerController brokerController;
@@ -44,11 +48,17 @@ public class SlaveSynchronize {
     public void setMasterAddr(String masterAddr) {
         this.masterAddr = masterAddr;
     }
-
+    /**
+     * 同步话题配置 订阅组配置 消费位置和延迟位置 到slave (保存到.bak文件)
+     */
     public void syncAll() {
+    	//同步话题配置
         this.syncTopicConfig();
+        //同步消费者消费位置
         this.syncConsumerOffset();
+        //同步延迟位置
         this.syncDelayOffset();
+        //同步订阅组配置
         this.syncSubscriptionGroupConfig();
     }
 

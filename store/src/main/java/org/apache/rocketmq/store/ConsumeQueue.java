@@ -487,17 +487,25 @@ public class ConsumeQueue {
             mappedFile.appendMessage(byteBuffer.array());
         }
     }
-
+    /**
+     * 根据 startIndex 获取消息消费队列条目
+     * @param startIndex 开始索引下标
+     * @return  
+     */
     public SelectMappedBufferResult getIndexBuffer(final long startIndex) {
         int mappedFileSize = this.mappedFileSize;
+        // startIndex * 20 = 获取物理偏移量
         long offset = startIndex * CQ_STORE_UNIT_SIZE;
         if (offset >= this.getMinLogicOffset()) {
+        	// 根据偏移量定位到具体的物理文件 mappedFile
             MappedFile mappedFile = this.mappedFileQueue.findMappedFileByOffset(offset);
             if (mappedFile != null) {
+            	// 根据 offset % size 取模，获取到该文件中的偏移量，然后从偏移量开始连续读取20个字节即可
                 SelectMappedBufferResult result = mappedFile.selectMappedBuffer((int) (offset % mappedFileSize));
                 return result;
             }
         }
+     // 走到这里，表示 offset < minLogicOffset, 消息已被删除
         return null;
     }
 

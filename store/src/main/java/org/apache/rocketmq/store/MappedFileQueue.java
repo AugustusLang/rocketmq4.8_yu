@@ -455,6 +455,7 @@ public class MappedFileQueue {
     }
 
     /**
+     * 根据offset/filesize计算该offset所在那个文件中
      * Finds a mapped file by offset.
      *
      * @param offset Offset.
@@ -466,6 +467,7 @@ public class MappedFileQueue {
             MappedFile firstMappedFile = this.getFirstMappedFile();
             MappedFile lastMappedFile = this.getLastMappedFile();
             if (firstMappedFile != null && lastMappedFile != null) {
+            	//r如果小于第一个文件或者大约最后一个文件  则直接返回
                 if (offset < firstMappedFile.getFileFromOffset() || offset >= lastMappedFile.getFileFromOffset() + this.mappedFileSize) {
                     LOG_ERROR.warn("Offset not matched. Request offset: {}, firstOffset: {}, lastOffset: {}, mappedFileSize: {}, mappedFiles count: {}",
                         offset,
@@ -474,6 +476,7 @@ public class MappedFileQueue {
                         this.mappedFileSize,
                         this.mappedFiles.size());
                 } else {
+                	//算出第几个文件的位置  当前offset/mappedFileSize 减去 第一个文件的offset/mappedFileSize
                     int index = (int) ((offset / this.mappedFileSize) - (firstMappedFile.getFileFromOffset() / this.mappedFileSize));
                     MappedFile targetFile = null;
                     try {
@@ -481,11 +484,12 @@ public class MappedFileQueue {
                     } catch (Exception ignored) {
                     }
 
+                    //如果目标文件不为空 且 offset 再 目标文件 内直接返回目标文件
                     if (targetFile != null && offset >= targetFile.getFileFromOffset()
                         && offset < targetFile.getFileFromOffset() + this.mappedFileSize) {
                         return targetFile;
                     }
-
+                    //没取到 则对所有文件进行一次位置匹配  匹配到则返回
                     for (MappedFile tmpMappedFile : this.mappedFiles) {
                         if (offset >= tmpMappedFile.getFileFromOffset()
                             && offset < tmpMappedFile.getFileFromOffset() + this.mappedFileSize) {
@@ -493,7 +497,7 @@ public class MappedFileQueue {
                         }
                     }
                 }
-
+                //没发现的时候 返回第一个文件
                 if (returnFirstOnNotFound) {
                     return firstMappedFile;
                 }

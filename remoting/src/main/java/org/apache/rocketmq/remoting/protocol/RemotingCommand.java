@@ -72,6 +72,7 @@ public class RemotingCommand {
     private int code;
     private LanguageCode language = LanguageCode.JAVA;
     private int version = 0;
+    //Opaque 不透明的; 不透光的; 浑浊的; 难懂; 模糊; 隐晦; 不清楚;
     private int opaque = requestId.getAndIncrement();
     private int flag = 0;
     private String remark;
@@ -84,7 +85,12 @@ public class RemotingCommand {
 
     protected RemotingCommand() {
     }
-
+    /**
+     * 创建请求命令
+     * @param code
+     * @param customHeader
+     * @return
+     */
     public static RemotingCommand createRequestCommand(int code, CommandCustomHeader customHeader) {
         RemotingCommand cmd = new RemotingCommand();
         cmd.setCode(code);

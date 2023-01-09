@@ -23,7 +23,11 @@ import java.util.List;
 
 import org.apache.rocketmq.broker.BrokerController;
 import org.apache.rocketmq.common.protocol.heartbeat.SubscriptionData;
-
+/**
+ * 客户端ID改变监听器
+ * @author YuLang
+ *
+ */
 public class DefaultConsumerIdsChangeListener implements ConsumerIdsChangeListener {
     private final BrokerController brokerController;
 
@@ -37,6 +41,7 @@ public class DefaultConsumerIdsChangeListener implements ConsumerIdsChangeListen
             return;
         }
         switch (event) {
+        //有改变
             case CHANGE:
                 if (args == null || args.length < 1) {
                     return;
@@ -44,11 +49,13 @@ public class DefaultConsumerIdsChangeListener implements ConsumerIdsChangeListen
                 List<Channel> channels = (List<Channel>) args[0];
                 if (channels != null && brokerController.getBrokerConfig().isNotifyConsumerIdsChangedEnable()) {
                     for (Channel chl : channels) {
+                    	//通知ConsumerIds改变
                         this.brokerController.getBroker2Client().notifyConsumerIdsChanged(chl, group);
                     }
                 }
                 break;
             case UNREGISTER:
+            	//注销
                 this.brokerController.getConsumerFilterManager().unRegister(group);
                 break;
             case REGISTER:
@@ -56,6 +63,7 @@ public class DefaultConsumerIdsChangeListener implements ConsumerIdsChangeListen
                     return;
                 }
                 Collection<SubscriptionData> subscriptionDataList = (Collection<SubscriptionData>) args[0];
+                //注册
                 this.brokerController.getConsumerFilterManager().register(group, subscriptionDataList);
                 break;
             default:

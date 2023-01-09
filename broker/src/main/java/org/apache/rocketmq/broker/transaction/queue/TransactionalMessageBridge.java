@@ -191,7 +191,7 @@ public class TransactionalMessageBridge {
 
         return foundList;
     }
-
+   // 发送HalfMsg 
     public PutMessageResult putHalfMessage(MessageExtBrokerInner messageInner) {
         return store.putMessage(parseHalfMessageInner(messageInner));
     }

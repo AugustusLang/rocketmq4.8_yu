@@ -226,7 +226,14 @@ public class TopicConfigManager extends ConfigManager {
 
         return topicConfig;
     }
-
+    /**
+     * 创建重试队列 并放入topicConfigTable 并且将这个队列持久化到磁盘的topic Json文件
+     * @param topic
+     * @param clientDefaultTopicQueueNums
+     * @param perm
+     * @param topicSysFlag
+     * @return
+     */
     public TopicConfig createTopicInSendMessageBackMethod(
         final String topic,
         final int clientDefaultTopicQueueNums,

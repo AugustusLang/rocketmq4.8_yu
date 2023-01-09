@@ -123,7 +123,7 @@ public class ProcessQueue {
             }
         }
     }
-
+    // 向lockTreeMap中写入数据
     public boolean putMessage(final List<MessageExt> msgs) {
         boolean dispatchToConsume = false;
         try {
