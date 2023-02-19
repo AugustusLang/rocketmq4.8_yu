@@ -109,6 +109,7 @@ public class BrokerFastFailure {
     }
   
     void cleanExpiredRequestInQueue(final BlockingQueue<Runnable> blockingQueue, final long maxWaitTimeMillsInQueue) {
+        //每次取一个 判断是否大于最大的等待时间，如果大于则删除，并返回系“统繁忙”
         while (true) {
             try {
                 if (!blockingQueue.isEmpty()) {

@@ -178,8 +178,11 @@ public class BrokerController {
     ) {
     	//broker配置
         this.brokerConfig = brokerConfig;
+        //netty server端配置
         this.nettyServerConfig = nettyServerConfig;
+        //netty client
         this.nettyClientConfig = nettyClientConfig;
+        //消息存储配置
         this.messageStoreConfig = messageStoreConfig;
         //消费者Offset管理者
         this.consumerOffsetManager = new ConsumerOffsetManager(this);
@@ -199,7 +202,7 @@ public class BrokerController {
         this.consumerFilterManager = new ConsumerFilterManager(this);
         //生产者
         this.producerManager = new ProducerManager();
-        
+        //创建客户端客房服务
         this.clientHousekeepingService = new ClientHousekeepingService(this);
         //是broker跟客户端之间的网络交互组件，主要负责检查生产者事务状态、通知消费者ids变化、复位偏移量、查询消费状态等；
         this.broker2Client = new Broker2Client(this);
@@ -302,6 +305,7 @@ public class BrokerController {
             //在4.5.1 版本之后 10909 (10911-2) 端口  VipChannelEnabled默认为false
             fastConfig.setListenPort(nettyServerConfig.getListenPort() - 2);
             this.fastRemotingServer = new NettyRemotingServer(fastConfig, this.clientHousekeepingService);
+
             //TODO 此处构建专门消息发送的线程池
             this.sendMessageExecutor = new BrokerFixedThreadPoolExecutor(
                 this.brokerConfig.getSendMessageThreadPoolNums(),
@@ -310,6 +314,7 @@ public class BrokerController {
                 TimeUnit.MILLISECONDS,
                 this.sendThreadPoolQueue,
                 new ThreadFactoryImpl("SendMessageThread_"));
+
             // 此处构建专门消息PUll的线程池
             this.pullMessageExecutor = new BrokerFixedThreadPoolExecutor(
                 this.brokerConfig.getPullMessageThreadPoolNums(),
@@ -318,6 +323,7 @@ public class BrokerController {
                 TimeUnit.MILLISECONDS,
                 this.pullThreadPoolQueue,
                 new ThreadFactoryImpl("PullMessageThread_"));
+
             // 此处构建专门replyMessage消息的线程池
             this.replyMessageExecutor = new BrokerFixedThreadPoolExecutor(
                 this.brokerConfig.getProcessReplyMessageThreadPoolNums(),
@@ -326,6 +332,7 @@ public class BrokerController {
                 TimeUnit.MILLISECONDS,
                 this.replyThreadPoolQueue,
                 new ThreadFactoryImpl("ProcessReplyMessageThread_"));
+
             // 此处构建专门queryMessage消息的线程池
             this.queryMessageExecutor = new BrokerFixedThreadPoolExecutor(
                 this.brokerConfig.getQueryMessageThreadPoolNums(),
@@ -334,10 +341,12 @@ public class BrokerController {
                 TimeUnit.MILLISECONDS,
                 this.queryThreadPoolQueue,
                 new ThreadFactoryImpl("QueryMessageThread_"));
+
             // 此处构建专门adminBroke消息的线程池
             this.adminBrokerExecutor =
                 Executors.newFixedThreadPool(this.brokerConfig.getAdminBrokerThreadPoolNums(), new ThreadFactoryImpl(
                     "AdminBrokerThread_"));
+
             // 此处构建专门clientManage的线程池
             this.clientManageExecutor = new ThreadPoolExecutor(
                 this.brokerConfig.getClientManageThreadPoolNums(),
@@ -346,6 +355,7 @@ public class BrokerController {
                 TimeUnit.MILLISECONDS,
                 this.clientManagerThreadPoolQueue,
                 new ThreadFactoryImpl("ClientManageThread_"));
+
             // 此处构建专门heartBeat的线程池
             this.heartbeatExecutor = new BrokerFixedThreadPoolExecutor(
                 this.brokerConfig.getHeartbeatThreadPoolNums(),
@@ -354,6 +364,7 @@ public class BrokerController {
                 TimeUnit.MILLISECONDS,
                 this.heartbeatThreadPoolQueue,
                 new ThreadFactoryImpl("HeartbeatThread_", true));
+
             // 此处构建专门endTransaction的线程池
             this.endTransactionExecutor = new BrokerFixedThreadPoolExecutor(
                 this.brokerConfig.getEndTransactionThreadPoolNums(),
@@ -362,6 +373,7 @@ public class BrokerController {
                 TimeUnit.MILLISECONDS,
                 this.endTransactionThreadPoolQueue,
                 new ThreadFactoryImpl("EndTransactionThread_"));
+            
             // 此处构建专门consumerManage的线程池
             this.consumerManageExecutor =
                 Executors.newFixedThreadPool(this.brokerConfig.getConsumerManageThreadPoolNums(), new ThreadFactoryImpl(

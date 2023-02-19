@@ -100,7 +100,11 @@ public class MessageDecoder {
         return new MessageId(address, offset);
     }
 
+    //TODO
+    //TODO 将磁盘上的文件内容映射成对象
+    //TODO
     /**
+     *
      * Just decode properties from msg buffer.
      *
      * @param byteBuffer msg commit log buffer.

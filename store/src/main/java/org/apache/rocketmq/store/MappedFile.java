@@ -148,6 +148,12 @@ public class MappedFile extends ReferenceResource {
         this.transientStorePool = transientStorePool;
     }
 
+    /**
+     * 初始化文件 使用mmap方式 读取
+     * @param fileName
+     * @param fileSize
+     * @throws IOException
+     */
     private void init(final String fileName, final int fileSize) throws IOException {
         this.fileName = fileName;
         this.fileSize = fileSize;
@@ -380,6 +386,12 @@ public class MappedFile extends ReferenceResource {
         return this.fileSize == this.wrotePosition.get();
     }
 
+    /**
+     * //计算当前offset再文件中的位置 并取出对应长度的内容
+     * @param pos
+     * @param size
+     * @return
+     */
     public SelectMappedBufferResult selectMappedBuffer(int pos, int size) {
         int readPosition = getReadPosition();
         if ((pos + size) <= readPosition) {
@@ -405,9 +417,11 @@ public class MappedFile extends ReferenceResource {
         int readPosition = getReadPosition();
         if (pos < readPosition && pos >= 0) {
             if (this.hold()) {
+                //创建缓冲区
                 ByteBuffer byteBuffer = this.mappedByteBuffer.slice();
                 byteBuffer.position(pos);
                 int size = readPosition - pos;
+                //创建子缓冲区
                 ByteBuffer byteBufferNew = byteBuffer.slice();
                 byteBufferNew.limit(size);
                 return new SelectMappedBufferResult(this.fileFromOffset + pos, byteBufferNew, size, this);

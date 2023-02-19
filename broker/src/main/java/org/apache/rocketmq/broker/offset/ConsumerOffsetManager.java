@@ -33,11 +33,15 @@ import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.remoting.protocol.RemotingSerializable;
 
+/**
+ * 消费者Offset管理者
+ */
 public class ConsumerOffsetManager extends ConfigManager {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     private static final String TOPIC_GROUP_SEPARATOR = "@";
-    //ConcurrentMap contents:	queueId, offset
-    private ConcurrentMap<String/* topic@group */, ConcurrentMap<Integer, Long>> offsetTable =
+    //用来存储指定topic，group下的指定 queue的offset
+    //key 为 topic@group; Value为  ConcurrentMap(contents:	queueId, offset)
+    private ConcurrentMap<String/* topic@group */, ConcurrentMap<Integer/*queueId*/, Long/*offset*/>> offsetTable =
         new ConcurrentHashMap<String, ConcurrentMap<Integer, Long>>(512);
 
     private transient BrokerController brokerController;

@@ -95,7 +95,9 @@ public class NamesrvController {
                 NamesrvController.this.routeInfoManager.scanNotActiveBroker();
             }
         }, 5, 10, TimeUnit.SECONDS);
-      //周期性把kvConfig中的数据 持久化到硬盘上保存为json格式
+
+
+        //周期性把kvConfig中的数据 持久化到硬盘上保存为json格式
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -151,7 +153,7 @@ public class NamesrvController {
             this.remotingServer.registerDefaultProcessor(new ClusterTestRequestProcessor(this, namesrvConfig.getProductEnvName()),
                 this.remotingExecutor);
         } else {
-
+            //和remotingExecutor关联起来，用于接收Broker 或者 producer Consumer 发送的处理请求
             this.remotingServer.registerDefaultProcessor(new DefaultRequestProcessor(this), this.remotingExecutor);
         }
     }

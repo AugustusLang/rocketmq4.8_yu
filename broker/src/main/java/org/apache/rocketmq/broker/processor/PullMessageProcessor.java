@@ -383,6 +383,7 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
             }
 
             switch (response.getCode()) {
+                //如果返回码为成功
                 case ResponseCode.SUCCESS:
 
                     this.brokerController.getBrokerStatsManager().incGroupGetNums(requestHeader.getConsumerGroup(), requestHeader.getTopic(),
@@ -394,6 +395,7 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
                     this.brokerController.getBrokerStatsManager().incBrokerGetNums(getMessageResult.getMessageCount());
                     if (this.brokerController.getBrokerConfig().isTransferMsgByHeap()) {
                         final long beginTimeMills = this.brokerController.getMessageStore().now();
+                        //TODO 从磁盘读取消息的具体内容
                         final byte[] r = this.readGetMessageResult(getMessageResult, requestHeader.getConsumerGroup(), requestHeader.getTopic(), requestHeader.getQueueId());
                         this.brokerController.getBrokerStatsManager().incGroupGetLatency(requestHeader.getConsumerGroup(),
                             requestHeader.getTopic(), requestHeader.getQueueId(),
@@ -501,6 +503,15 @@ public class PullMessageProcessor extends AsyncNettyRequestProcessor implements 
         }
     }
 
+    /**
+     * 从文件内读取指定长度的数据
+     * @param getMessageResult
+     * @param group
+     * @param topic
+     * @param queueId
+     * @return
+     */
+    //TODO 读取文件的实现
     private byte[] readGetMessageResult(final GetMessageResult getMessageResult, final String group, final String topic,
         final int queueId) {
         final ByteBuffer byteBuffer = ByteBuffer.allocate(getMessageResult.getBufferTotalSize());

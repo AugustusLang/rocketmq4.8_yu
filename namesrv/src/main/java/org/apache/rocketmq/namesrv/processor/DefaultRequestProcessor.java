@@ -62,7 +62,7 @@ public class DefaultRequestProcessor extends AsyncNettyRequestProcessor implemen
     private static InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
 
     protected final NamesrvController namesrvController;
-    //用于接收Broker 或者 producer 发送的处理请求
+    //用于接收Broker 或者 producer Consumer 发送的处理请求
     public DefaultRequestProcessor(NamesrvController namesrvController) {
         this.namesrvController = namesrvController;
     }
@@ -97,7 +97,7 @@ public class DefaultRequestProcessor extends AsyncNettyRequestProcessor implemen
                 }
             case RequestCode.UNREGISTER_BROKER:
                 return this.unregisterBroker(ctx, request);//注销broker
-            case RequestCode.GET_ROUTEINFO_BY_TOPIC:
+            case RequestCode.GET_ROUTEINFO_BY_TOPIC: //根据Topic发现路由信息
                 return this.getRouteInfoByTopic(ctx, request);
             case RequestCode.GET_BROKER_CLUSTER_INFO:
                 return this.getBrokerClusterInfo(ctx, request);

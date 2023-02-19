@@ -115,6 +115,7 @@ public class ExpressionMessageFilter implements MessageFilter {
     }
 
     @Override
+    // 表达式方式进行过滤
     public boolean isMatchedByCommitLog(ByteBuffer msgBuffer, Map<String, String> properties) {
         if (subscriptionData == null) {
             return true;
@@ -144,7 +145,7 @@ public class ExpressionMessageFilter implements MessageFilter {
         Object ret = null;
         try {
             MessageEvaluationContext context = new MessageEvaluationContext(tempProperties);
-
+            //具体过滤行为
             ret = realFilterData.getCompiledExpression().evaluate(context);
         } catch (Throwable e) {
             log.error("Message Filter error, " + realFilterData + ", " + tempProperties, e);

@@ -140,6 +140,7 @@ public class RouteInfoManager {
             	// 读写锁，由于是写操作，那么采用 writeLock，所以对应的属性采用的是 hashmap。
                 this.lock.writeLock().lockInterruptibly();
                 // 把 brokerName 加入 对应的集群中
+                //TODO clusterAddrTable
                 Set<String> brokerNames = this.clusterAddrTable.get(clusterName);
                 if (null == brokerNames) {
                     brokerNames = new HashSet<String>();
@@ -149,7 +150,9 @@ public class RouteInfoManager {
                 // 是否为第一次注册
                 boolean registerFirst = false;
                 // 更新 brokerName 对应的 brokerAddress 集合中的属性
+                //TODO brokerAddrTable
                 BrokerData brokerData = this.brokerAddrTable.get(brokerName);
+                //private HashMap<Long/* brokerId */, String/* broker address */> brokerAddrs;
                 if (null == brokerData) {
                     registerFirst = true;
                     brokerData = new BrokerData(clusterName, brokerName, new HashMap<Long, String>());
@@ -171,7 +174,10 @@ public class RouteInfoManager {
                 /**
                  * 如果当前 broker 为 master，并且 broker 配置信息发生变化或者是初次注册，则需要创建或者更新 topic 路由的元数据(QueueData)。
                  * 因为 topic 中的对应了broker 的信息，所以需要随着一起同步
+                 *
+                 * 从topicQueueTable 中获取数据并封装成QueueData，再存回去
                  */
+                //TODO topicQueueTable
                 if (null != topicConfigWrapper
                     && MixAll.MASTER_ID == brokerId) {
                     if (this.isBrokerTopicConfigChanged(brokerAddr, topicConfigWrapper.getDataVersion())
@@ -186,16 +192,20 @@ public class RouteInfoManager {
                     }
                 }
                 // 更新 broker 的存活表
+                //存储进broker 的存货表，并拿回老数据
+                // TODO brokerLiveTable
                 BrokerLiveInfo prevBrokerLiveInfo = this.brokerLiveTable.put(brokerAddr,
                     new BrokerLiveInfo(
                         System.currentTimeMillis(),
                         topicConfigWrapper.getDataVersion(),
                         channel,
                         haServerAddr));
+                //如果老数据为空 则是新注册的信息
                 if (null == prevBrokerLiveInfo) {
                     log.info("new broker registered, {} HAServer: {}", brokerAddr, haServerAddr);
                 }
                 //注册 Broker 的过滤器 Server 地址列表 ，1个Broker上会关联多个FilterServer消息过滤服务器
+                // TODO filterServerTable
                 if (filterServerList != null) {
                     if (filterServerList.isEmpty()) {
                         this.filterServerTable.remove(brokerAddr);
@@ -204,6 +214,7 @@ public class RouteInfoManager {
                     }
                 }
                 // 如果当前 broker 是从节点，那么更新 master 节点信息
+                //TODO brokerLiveTable
                 if (MixAll.MASTER_ID != brokerId) {
                     String masterAddr = brokerData.getBrokerAddrs().get(MixAll.MASTER_ID);
                     if (masterAddr != null) {
@@ -244,6 +255,11 @@ public class RouteInfoManager {
         }
     }
 
+    /**
+     * 从topicQueueTable 中获取数据并封装成QueueData，再存回去
+     * @param brokerName
+     * @param topicConfig
+     */
     private void createAndUpdateQueueData(final String brokerName, final TopicConfig topicConfig) {
         QueueData queueData = new QueueData();
         queueData.setBrokerName(brokerName);
@@ -458,6 +474,10 @@ public class RouteInfoManager {
         return null;
     }
 
+    /**
+     *  扫描不活动的Broker 如果超时 则关闭该broker对应的 channel ，并从brokerLiveTable ，filterServerTable
+     *  brokerAddrTable clusterAddrTable topicQueueTable 中 将其删除
+     */
     public void scanNotActiveBroker() {
         Iterator<Entry<String, BrokerLiveInfo>> it = this.brokerLiveTable.entrySet().iterator();
         while (it.hasNext()) {

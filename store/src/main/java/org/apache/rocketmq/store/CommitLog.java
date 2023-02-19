@@ -1166,6 +1166,7 @@ public class CommitLog {
     }
 
     public SelectMappedBufferResult getMessage(final long offset, final int size) {
+        //1G文件
         int mappedFileSize = this.defaultMessageStore.getMessageStoreConfig().getMappedFileSizeCommitLog();
         //根据offset/fileSize计算该offset所在那个文件中
         MappedFile mappedFile = this.mappedFileQueue.findMappedFileByOffset(offset, offset == 0);

@@ -120,6 +120,7 @@ public class DefaultMessageStore implements MessageStore {
 
     public DefaultMessageStore(final MessageStoreConfig messageStoreConfig, final BrokerStatsManager brokerStatsManager,
         final MessageArrivingListener messageArrivingListener, final BrokerConfig brokerConfig) throws IOException {
+        //消息到达监听
         this.messageArrivingListener = messageArrivingListener;
         this.brokerConfig = brokerConfig;
         this.messageStoreConfig = messageStoreConfig;
@@ -189,7 +190,7 @@ public class DefaultMessageStore implements MessageStore {
                 result = result && this.scheduleMessageService.load();
             }
 
-            //TODO  load Commit Log
+            //TODO  load Commit Log 使用RandomAccessFile 的mmap
             result = result && this.commitLog.load();
 
             //TODO load Consume Queue
@@ -619,7 +620,7 @@ public class DefaultMessageStore implements MessageStore {
                     nextBeginOffset = nextOffsetCorrection(offset, maxOffset);
                 }
             } else {
-            	//当 offset 是正常的，处于[minOffset, maxOffset] 区间调用
+            	//TODO 当 offset 是正常的，处于[minOffset, maxOffset] 区间调用
             	//org.apache.rocketmq.store.ConsumeQueue#getIndexBuffer：根据 startIndex 获取消息消费队列条目
                 SelectMappedBufferResult bufferConsumeQueue = consumeQueue.getIndexBuffer(offset);
                 if (bufferConsumeQueue != null) {
@@ -673,7 +674,7 @@ public class DefaultMessageStore implements MessageStore {
 
                                 continue;
                             }
-
+                            //根据offset 和 size 查询文件中的具体开始位置
                             SelectMappedBufferResult selectResult = this.commitLog.getMessage(offsetPy, sizePy);
                             if (null == selectResult) {
                                 if (getResult.getBufferTotalSize() == 0) {
@@ -1234,6 +1235,12 @@ public class DefaultMessageStore implements MessageStore {
         return null;
     }
 
+    /**
+     * 根据TOPIC queueId查询出具体的Queue
+     * @param topic
+     * @param queueId
+     * @return
+     */
     public ConsumeQueue findConsumeQueue(String topic, int queueId) {
         ConcurrentMap<Integer, ConsumeQueue> map = consumeQueueTable.get(topic);
         if (null == map) {

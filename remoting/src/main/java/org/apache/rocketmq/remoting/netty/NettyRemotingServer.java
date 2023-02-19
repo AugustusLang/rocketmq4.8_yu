@@ -117,7 +117,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
                 return new Thread(r, "NettyServerPublicExecutor_" + this.threadIndex.incrementAndGet());
             }
         });
-
+        //如果是linux 系统使用epoll
         if (useEpoll()) {
             this.eventLoopGroupBoss = new EpollEventLoopGroup(1, new ThreadFactory() {
                 private AtomicInteger threadIndex = new AtomicInteger(0);
@@ -161,6 +161,9 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         loadSslContext();
     }
 
+    /**
+     * 加载SSL 上下文
+     */
     public void loadSslContext() {
         TlsMode tlsMode = TlsSystemConfig.tlsMode;
         log.info("Server is running in TLS {} mode", tlsMode.getName());
@@ -177,6 +180,10 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         }
     }
 
+    /**
+     * 判断是否使用Epoll  linux系统 elpoll是处于可用状态  配置中使用了 该选项
+     * @return
+     */
     private boolean useEpoll() {
         return RemotingUtil.isLinuxPlatform()
             && nettyServerConfig.isUseEpollNativeSelector()
